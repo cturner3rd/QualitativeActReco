@@ -1,0 +1,88 @@
+---
+title: "Qualitative Activity Recognition of Weight Lifting Exercises"
+author: "Carl Turner"
+date: "February 26, 2016"
+output: html_document
+---
+
+### Github Repo
+A link to the Github repo for all files related to the project are found here: <http://github.com/cturner3rd/QualitativeActReco>
+
+###Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. The goal of this project was to use data from accelerometers to classify the types of movements participants made while lifting dumbells.  More information is available from the website here: <http://groupware.les.inf.puc-rio.br/har> 
+
+###Data
+The training data for this project are available here: <https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv>
+
+The test data are available here: <https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv>
+
+###Data Import and Cleansing
+The testing and training motion data were read directly from the Cloudfront site. In the training set, correct movements were coded as "A" as shown in the table below (variable name "classe".) The letters "B" through "E" were the codes for incorrect movements. The goal of the analysis was to correctly categorize the five movement types A - E in the testing data set. 
+
+Inspection of the data showed that many columns contained little useful data. Those data columns were removed prior to modeling the training data set.
+
+```{r, results='hide'}
+library(lattice)
+library(ggplot2)
+library(caret)
+library(rpart)
+```
+
+```{r, cache=TRUE, results='markup'}
+trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+pml.training <- read.csv(url(trainUrl), stringsAsFactors = FALSE)
+pml.testing <- read.csv(url(testUrl), stringsAsFactors = FALSE)
+table(pml.training$classe) 
+
+# Data Cleaning
+na_count <-sapply(pml.training, function(y) sum(length(which(is.na(y)))))
+na_count <- data.frame(na_count)
+table(na_count) #67 columns have 19216 NAs
+null_count <-sapply(pml.training, function(y) sum(length(which(y==""))))
+null_count <- data.frame(null_count)
+table(null_count) #33 columns have 19216 ""s
+
+# Select only columns that have complete data - 60 columns remaining
+pml.training<-pml.training[,na_count==0 & null_count==0] 
+pml.testing<-pml.testing[,na_count==0 & null_count==0]
+pml.training<-pml.training[,8:60] #remove first 7 cols
+pml.testing<-pml.testing[,8:60] #remove first 7 cols
+testing <- pml.testing
+```
+
+###Training
+A validation set was created from the cleansed training data set by randomly selecting 25% of the training set for use in validation. The training set was then used to fit a random forest model. 
+
+```{r, cache=TRUE}
+# Split training into training and validation 75/25
+set.seed(3458)
+inTrain <- createDataPartition(pml.training$classe, p = 0.75, list = FALSE)
+training <- pml.training[inTrain,]
+validation <- pml.training[-inTrain,]
+
+# Random Forest: training
+control <- trainControl(method = "cv", number = 5)
+model_rf <- train(classe ~ ., data = training, method = "rf", trControl = control)
+print(model_rf)
+```
+
+###Validation
+The validation data set was used to predict the accuracy of the model on the test data set. The results are shown below. The 95% CI estimate of the accuracy of the model was 0.999% - 0.994%.
+
+```{r, cache=FALSE}
+# Show prediction result on validation set
+predict_rf_v <- predict(model_rf, validation)
+matrix_rf_v <- confusionMatrix(validation$classe, predict_rf_v)
+matrix_rf_v
+matrix_rf_v$overall[1]
+```
+
+###Prediction 
+The model was run against the testing data set. The results are the prediction are as shown.
+
+```{r, cache=FALSE}
+# Show prediction result on test set
+predict_rf_t <- predict(model_rf, testing)
+predict_rf_t
+```
