@@ -7,6 +7,6 @@ Code for the Qualitative Activity Recognition project
 ###Markdown file
 QualActReco.Rmd is the markdown file for the report
 
-###PDF file
-Printed version of the markdown file. MUCH EASIER TO READ!!
+###PDF file and html file
+Printed versions of the markdown file. PDF IS MUCH EASIER TO READ!!
 
